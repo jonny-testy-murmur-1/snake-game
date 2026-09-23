@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0420" />
+<meta name="description" content="Neon Snake — a retro 80s arcade snake game built with vanilla HTML, CSS and JavaScript." />
+<title>Neon Snake — Retro Arcade</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230b0420'/><path d='M8 20h8v-8h8' fill='none' stroke='%2322e8ff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Synthwave backdrop ─────────────────────────────────────────── -->
+  <div class="scene" aria-hidden="true">
+    <div class="scene__stars"></div>
+    <div class="scene__sun"></div>
+    <div class="scene__horizon"></div>
+    <div class="scene__grid"></div>
+  </div>
+
+  <!-- ── Cabinet ────────────────────────────────────────────────────── -->
+  <main class="cabinet">
+
+    <header class="masthead">
+      <h1 class="masthead__title">Neon Snake</h1>
+      <p class="masthead__tagline">Insert coin · 1985</p>
+    </header>
+
+    <div class="hud" role="group" aria-label="Game statistics">
+      <div class="stat">
+        <span class="stat__label">Score</span>
+        <span class="stat__value" id="score" aria-live="polite">0</span>
+      </div>
+      <div class="stat stat--accent">
+        <span class="stat__label">Best</span>
+        <span class="stat__value" id="best">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">Level</span>
+        <span class="stat__value" id="level">1</span>
+      </div>
+    </div>
+
+    <div class="stage">
+      <canvas id="board" class="stage__canvas" role="img"
+              aria-label="Snake game board"></canvas>
+
+      <div class="overlay" id="overlay" data-state="ready">
+        <p class="overlay__eyebrow" id="overlay-eyebrow">Ready</p>
+        <h2 class="overlay__title" id="overlay-title">Neon Snake</h2>
+        <p class="overlay__body" id="overlay-body">
+          Eat the orbs. Dodge the walls. Don&rsquo;t bite yourself.
+        </p>
+        <button class="btn" id="primary-action" type="button">Start Game</button>
+        <p class="overlay__hint">
+          <kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd>
+          or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to steer
+        </p>
+      </div>
+    </div>
+
+    <!-- Touch controls -->
+    <div class="dpad" id="dpad" aria-label="Touch controls">
+      <button class="dpad__btn dpad__btn--up"    type="button" data-dir="up"    aria-label="Move up"></button>
+      <button class="dpad__btn dpad__btn--left"  type="button" data-dir="left"  aria-label="Move left"></button>
+      <button class="dpad__btn dpad__btn--right" type="button" data-dir="right" aria-label="Move right"></button>
+      <button class="dpad__btn dpad__btn--down"  type="button" data-dir="down"  aria-label="Move down"></button>
+      <span class="dpad__hub" aria-hidden="true"></span>
+    </div>
+
+    <footer class="legend">
+      <span class="legend__item"><kbd>Space</kbd> pause</span>
+      <span class="legend__dot" aria-hidden="true"></span>
+      <span class="legend__item"><kbd>R</kbd> restart</span>
+      <span class="legend__dot" aria-hidden="true"></span>
+      <button class="legend__toggle" id="sound-toggle" type="button" aria-pressed="true">
+        <span class="legend__toggle-icon" aria-hidden="true"></span>
+        <span id="sound-label">Sound on</span>
+      </button>
+    </footer>
+
+  </main>
+
+  <div class="crt" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <script src="game.js"></script>
+</body>
+</html>
