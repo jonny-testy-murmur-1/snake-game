@@ -30,6 +30,8 @@ python3 -m http.server 8000
   you keep your place in the rota: the next orb is golden instead.
 - Every 5 orbs raises the level: the snake speeds up and changes colourway.
 - Walls are lethal, and so is biting yourself.
+- Fill every cell and you win the round outright — there is nowhere left to
+  put an orb, so the grid bows out with a **PERFECT**.
 - Your best score is kept in `localStorage`.
 
 ## Layout

@@ -134,8 +134,11 @@
 
   /* ── Game state ────────────────────────────────────────────────────────── */
 
-  /** @type {'ready'|'playing'|'paused'|'dead'} */
+  /** @type {'ready'|'playing'|'paused'|'dead'|'won'} */
   let state = 'ready';
+
+  /* Both terminal states restart the same way. */
+  const isFinished = () => state === 'dead' || state === 'won';
 
   let snake      = [];     // grid cells, head first
   let prevCells  = [];     // positions one step ago, for interpolation
@@ -151,6 +154,7 @@
   let stepMs      = BASE_STEP_MS;
   let accumulator = 0;
   let lastFrame   = 0;
+  let pausedAt    = 0;    // when the current pause began, to rebase food.born
 
   const particles = [];
   const texts     = [];
@@ -212,6 +216,7 @@
   function togglePause() {
     if (state === 'playing') {
       state = 'paused';
+      pausedAt = performance.now();
       showOverlay({
         eyebrow: 'Paused',
         title: 'Take five',
@@ -219,10 +224,43 @@
         action: 'Resume',
       });
     } else if (state === 'paused') {
+      // The golden orb's countdown is wall-clock, so the time spent paused has
+      // to be handed back — otherwise stepping away loses you the orb, and the
+      // ring visibly drains while the grid is supposed to be waiting for you.
+      if (food) food.born += performance.now() - pausedAt;
       state = 'playing';
       lastFrame = performance.now();
       hideOverlay();
     }
+  }
+
+  /** Promote the round's score to the high score. Returns true if it was one. */
+  function recordBest() {
+    if (score <= best) return false;
+    best = score;
+    writeBest(best);
+    syncHud();
+    return true;
+  }
+
+  /* The snake has filled all COLS x ROWS cells — there is nowhere left to put
+     food, so the round is won rather than merely stuck without a target. */
+  function win() {
+    state = 'won';
+    Sound.levelUp();
+
+    // Confetti only — the overlay that follows says "Perfect" itself, and a
+    // float over the board centre would land under that copy.
+    const head = snake[0];
+    burst(head.x, head.y, GOLD_COLOR, 40);
+
+    recordBest();
+    showOverlay({
+      eyebrow: 'Perfect',
+      title: `${score} points`,
+      body: `You filled all ${COLS * ROWS} cells. There is nothing left to eat.`,
+      action: 'Play Again',
+    });
   }
 
   function gameOver() {
@@ -238,12 +276,7 @@
       stage.classList.add('is-shaking');
     }
 
-    const isRecord = score > best;
-    if (isRecord) {
-      best = score;
-      writeBest(best);
-      syncHud();
-    }
+    const isRecord = recordBest();
 
     showOverlay({
       eyebrow: isRecord ? 'New record' : 'Game over',
@@ -333,7 +366,7 @@
         if (!occupied.has(`${x},${y}`)) open.push({ x, y });
       }
     }
-    if (!open.length) { food = null; return; }   // board full — you win, basically
+    if (!open.length) { food = null; win(); return; }   // board full — that's the win
 
     const spot = open[randInt(open.length)];
 
@@ -694,14 +727,14 @@
     if (e.key === ' ' || e.key === 'Spacebar') {
       e.preventDefault();
       Sound.unlock();
-      if (state === 'ready' || state === 'dead') startGame();
+      if (state === 'ready' || isFinished()) startGame();
       else togglePause();
       return;
     }
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (state === 'ready' || state === 'dead') startGame();
+      if (state === 'ready' || isFinished()) startGame();
       return;
     }
 
