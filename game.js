@@ -739,30 +739,32 @@
   els.dpad.addEventListener('pointerdown', pressDpad);
   els.dpad.addEventListener('click', (e) => { if (e.detail === 0) pressDpad(e); });
 
-  // Swipe. The pointer is captured for the gesture, so a drag that wanders off
-  // the board still delivers its pointerup here and can't leave a stale origin
-  // behind to be mistaken for the start of the next swipe.
-  let swipeStart = null;
+  // Swipe. Origins are keyed by pointerId, so a second finger landing mid-swipe
+  // can't be mistaken for the first one's starting point. Each pointer is also
+  // captured for its gesture, so a drag that wanders off the board still
+  // delivers its pointerup here rather than leaving a stale origin behind.
+  const swipeStarts = new Map();
   stage.addEventListener('pointerdown', (e) => {
     // The overlay's button lives inside the stage; pressing it is not a swipe,
     // and capturing there would steal its click.
-    if (e.target.closest('button')) { swipeStart = null; return; }
-    swipeStart = { x: e.clientX, y: e.clientY };
+    if (e.target.closest('button')) return;
+    swipeStarts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { stage.setPointerCapture(e.pointerId); } catch { /* transient pointer */ }
   });
   stage.addEventListener('pointerup', (e) => {
     if (stage.hasPointerCapture(e.pointerId)) stage.releasePointerCapture(e.pointerId);
+    const swipeStart = swipeStarts.get(e.pointerId);
+    swipeStarts.delete(e.pointerId);
     if (!swipeStart) return;
     const dx = e.clientX - swipeStart.x;
     const dy = e.clientY - swipeStart.y;
-    swipeStart = null;
     if (Math.hypot(dx, dy) < 24) return;
     Sound.unlock();
     turn(Math.abs(dx) > Math.abs(dy)
       ? (dx > 0 ? 'right' : 'left')
       : (dy > 0 ? 'down' : 'up'));
   });
-  stage.addEventListener('pointercancel', () => { swipeStart = null; });
+  stage.addEventListener('pointercancel', (e) => { swipeStarts.delete(e.pointerId); });
 
   // Auto-pause when the player looks away
   const autoPause = () => { if (state === 'playing') togglePause(); };
