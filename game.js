@@ -320,17 +320,22 @@
 
     snake.unshift(head);
 
-    // Golden food expires if you dawdle — resolved before the bite is scored,
-    // so arriving a tick late doesn't still pay out. The head is already in
-    // place, so the replacement can't spawn underneath it.
-    if (food && food.golden && performance.now() - food.born > GOLD_TTL_MS) {
-      burst(food.x, food.y, GOLD_COLOR, 8);
-      spawnFood({ forceNormal: true });
-    }
+    // Golden food expires if you dawdle, and an expired orb never pays out —
+    // arriving a tick late is still late.
+    const expired = !!food && food.golden
+      && performance.now() - food.born > GOLD_TTL_MS;
+    if (expired) burst(food.x, food.y, GOLD_COLOR, 8);
 
-    const ate = food && head.x === food.x && head.y === food.y;
+    const ate = !!food && !expired && head.x === food.x && head.y === food.y;
+
+    // The tail has to vacate before anything looks at the board: the head is
+    // already in place, so a replacement orb reads one cell as occupied that
+    // is about to be free — and on a nearly full board that phantom cell
+    // reads as "no room left" and ends the round as a win nobody earned.
     if (!ate) snake.pop();
-    else consume();
+
+    if (expired) spawnFood({ forceNormal: true });
+    else if (ate) consume();
   }
 
   function consume() {

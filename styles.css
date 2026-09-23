@@ -31,6 +31,7 @@
   --radius-sm:   10px;
   --horizon:     62%;
   --grid-cell:   4.2vmin;
+  --gutter:      clamp(0.75rem, 3vw, 2rem);
 
   /* Type */
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono",
@@ -58,7 +59,17 @@ body {
      is fixed, so scrolling moves the cabinet alone. */
   align-items: safe center;
   justify-items: center;
-  padding: clamp(0.75rem, 3vw, 2rem);
+  /* Per-side `max()` rather than one gutter: the page asks for
+     `viewport-fit=cover` so the scene can run under the notch, which also
+     means the browser stops insetting the viewport for us — without this the
+     masthead would sit beneath the notch and the d-pad beneath the home
+     indicator. The scene is `position: fixed`, so it still bleeds edge to
+     edge behind the padding. */
+  padding:
+    max(env(safe-area-inset-top),    var(--gutter))
+    max(env(safe-area-inset-right),  var(--gutter))
+    max(env(safe-area-inset-bottom), var(--gutter))
+    max(env(safe-area-inset-left),   var(--gutter));
   font-family: var(--font-mono);
   color: var(--ink);
   background: var(--sky-void);
@@ -689,7 +700,10 @@ kbd {
   .dpad {
     grid-area: dpad;
     align-self: center;
-    width: min(9.5rem, 34vh);
+    /* The buttons stay 3rem, so the floor is two of them plus a seam: below
+       6rem opposing controls overlap outright, and at exactly 6rem they abut
+       with no gap to aim between. */
+    width: max(6.75rem, min(9.5rem, 34vh));
     margin: 0;
   }
 
