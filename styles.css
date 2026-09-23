@@ -543,6 +543,10 @@ kbd {
   border: 1px solid rgba(255, 47, 185, 0.4);
   border-radius: 50%;
   box-shadow: 0 0 18px rgba(255, 47, 185, 0.35);
+  /* Decoration only, and it is painted over the buttons' inner corners — once
+     the pad shrinks to its landscape size the hub would otherwise eat the
+     taps that land closest to the middle of the cross. */
+  pointer-events: none;
 }
 
 /* ── Legend ────────────────────────────────────────────────────────────── */
