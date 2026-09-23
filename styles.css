@@ -44,17 +44,26 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body { height: 100%; }
+html { height: 100%; }
 
 body {
   margin: 0;
+  /* min-height, not height: the box grows with an oversized cabinet so its
+     bottom padding survives the scroll. */
+  min-height: 100%;
   display: grid;
-  place-items: center;
+  /* `safe` centring: when the cabinet is taller than a short viewport — a phone
+     in landscape, say — it aligns to the start instead of overflowing equally
+     in both directions, so the d-pad stays reachable by scrolling. The backdrop
+     is fixed, so scrolling moves the cabinet alone. */
+  align-items: safe center;
+  justify-items: center;
   padding: clamp(0.75rem, 3vw, 2rem);
   font-family: var(--font-mono);
   color: var(--ink);
   background: var(--sky-void);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -631,6 +640,53 @@ kbd {
 /* Short viewports: drop the tagline before anything else clips */
 @media (max-height: 44rem) {
   .masthead__tagline { display: none; }
+}
+
+/* Landscape phones. A square board stacked above a d-pad simply cannot fit in
+   ~360px of height, and scrolling between the two is no way to play. So the
+   cabinet turns on its side: board on the left sized off the viewport height,
+   title, score and controls in a column beside it. */
+@media (max-height: 32rem) and (min-width: 36rem) and (orientation: landscape) {
+  .cabinet {
+    width: auto;
+    max-width: 94vw;
+    display: grid;
+    grid-template-columns: auto minmax(11rem, 15rem);
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      "stage masthead"
+      "stage hud"
+      "stage dpad"
+      "stage legend";
+    column-gap: clamp(0.8rem, 3vw, 1.6rem);
+    row-gap: 0.5rem;
+  }
+
+  .masthead { grid-area: masthead; }
+  .hud      { grid-area: hud; }
+  .legend   { grid-area: legend; }
+
+  .stage {
+    grid-area: stage;
+    align-self: center;
+    width: min(84vh, 26rem);
+    height: min(84vh, 26rem);
+  }
+
+  .dpad {
+    grid-area: dpad;
+    align-self: center;
+    width: min(9.5rem, 34vh);
+    margin: 0;
+  }
+
+  .dpad__btn { width: 3rem; height: 3rem; }
+  .hud { gap: 0.4rem; }
+  .stat { padding: 0.35rem 0.3rem 0.4rem; }
+
+  /* The title sits in a narrow column now — size it off the height so it
+     stays on one line. */
+  .masthead__title { font-size: clamp(1.25rem, 7vh, 1.9rem); letter-spacing: 0.1em; }
 }
 
 @media (prefers-reduced-motion: reduce) {

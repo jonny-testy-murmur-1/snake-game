@@ -26,7 +26,8 @@ python3 -m http.server 8000
 ## Rules
 
 - Eat the magenta orbs for **10 points**. Every fourth orb is **golden** and
-  worth **50**, but it expires — the ring around it counts down.
+  worth **50**, but it expires — the ring around it counts down. Miss it and
+  you keep your place in the rota: the next orb is golden instead.
 - Every 5 orbs raises the level: the snake speeds up and changes colourway.
 - Walls are lethal, and so is biting yourself.
 - Your best score is kept in `localStorage`.

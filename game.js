@@ -143,6 +143,7 @@
   let queued     = [];     // buffered turns, so fast double-taps aren't eaten
   let food       = null;   // { x, y, golden, born }
   let foodsEaten = 0;
+  let orbsUntilGold = GOLD_EVERY;   // position in the golden rota
   let score      = 0;
   let level      = 1;
   let best       = readBest();
@@ -188,6 +189,7 @@
     direction  = DIRS.right;
     queued     = [];
     foodsEaten = 0;
+    orbsUntilGold = GOLD_EVERY;
     score      = 0;
     level      = 1;
     stepMs     = BASE_STEP_MS;
@@ -283,16 +285,19 @@
       }
     }
 
-    const ate = food && head.x === food.x && head.y === food.y;
     snake.unshift(head);
-    if (!ate) snake.pop();
-    else consume();
 
-    // Golden food expires if you dawdle.
+    // Golden food expires if you dawdle — resolved before the bite is scored,
+    // so arriving a tick late doesn't still pay out. The head is already in
+    // place, so the replacement can't spawn underneath it.
     if (food && food.golden && performance.now() - food.born > GOLD_TTL_MS) {
       burst(food.x, food.y, GOLD_COLOR, 8);
       spawnFood({ forceNormal: true });
     }
+
+    const ate = food && head.x === food.x && head.y === food.y;
+    if (!ate) snake.pop();
+    else consume();
   }
 
   function consume() {
@@ -301,6 +306,7 @@
 
     score += gained;
     foodsEaten += 1;
+    if (golden) orbsUntilGold = GOLD_EVERY;   // rota restarts once it's claimed
 
     burst(food.x, food.y, golden ? GOLD_COLOR : FOOD_COLOR, golden ? 24 : 12);
     floatText(food.x, food.y, `+${gained}`, golden ? GOLD_COLOR : '#ffffff');
@@ -330,7 +336,15 @@
     if (!open.length) { food = null; return; }   // board full — you win, basically
 
     const spot = open[randInt(open.length)];
-    const golden = !forceNormal && foodsEaten > 0 && (foodsEaten + 1) % GOLD_EVERY === 0;
+
+    /* The rota gets its own counter rather than riding on foodsEaten: when a
+       golden orb expires it is replaced by a plain one, and that replacement
+       must not consume the player's turn in the rota — otherwise the promised
+       "every fourth orb" quietly becomes every eighth. So the countdown holds
+       at 1 until a golden orb is actually claimed. */
+    const golden = !forceNormal && orbsUntilGold === 1;
+    if (!golden && !forceNormal) orbsUntilGold -= 1;
+
     food = { x: spot.x, y: spot.y, golden, born: performance.now() };
   }
 
@@ -662,6 +676,13 @@
   window.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
+    // A focused button owns its own activation keys. Without this, the global
+    // Space/Enter handling below would preventDefault the keypress and the
+    // button's click would never fire — keyboard and screen-reader users could
+    // focus the d-pad but never actually press it.
+    const activating = e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter';
+    if (activating && e.target instanceof Element && e.target.closest('button')) return;
+
     const dirName = KEY_MAP[e.key] || KEY_MAP[e.key.toLowerCase()];
     if (dirName) {
       e.preventDefault();
@@ -704,21 +725,33 @@
     if (Sound.enabled) { Sound.unlock(); Sound.tone(880, 0, 0.08); }
   });
 
-  // D-pad
-  els.dpad.addEventListener('pointerdown', (e) => {
+  // D-pad. Taps steer on pointerdown for the lowest possible latency; keyboard
+  // and assistive-technology activation arrives as a click with no pointer
+  // behind it (detail === 0), which is the only kind of click we act on — a
+  // real tap would otherwise steer twice.
+  const pressDpad = (e) => {
     const btn = e.target.closest('[data-dir]');
     if (!btn) return;
     e.preventDefault();
     Sound.unlock();
     turn(btn.dataset.dir);
-  });
+  };
+  els.dpad.addEventListener('pointerdown', pressDpad);
+  els.dpad.addEventListener('click', (e) => { if (e.detail === 0) pressDpad(e); });
 
-  // Swipe
+  // Swipe. The pointer is captured for the gesture, so a drag that wanders off
+  // the board still delivers its pointerup here and can't leave a stale origin
+  // behind to be mistaken for the start of the next swipe.
   let swipeStart = null;
   stage.addEventListener('pointerdown', (e) => {
+    // The overlay's button lives inside the stage; pressing it is not a swipe,
+    // and capturing there would steal its click.
+    if (e.target.closest('button')) { swipeStart = null; return; }
     swipeStart = { x: e.clientX, y: e.clientY };
+    try { stage.setPointerCapture(e.pointerId); } catch { /* transient pointer */ }
   });
   stage.addEventListener('pointerup', (e) => {
+    if (stage.hasPointerCapture(e.pointerId)) stage.releasePointerCapture(e.pointerId);
     if (!swipeStart) return;
     const dx = e.clientX - swipeStart.x;
     const dy = e.clientY - swipeStart.y;
@@ -729,6 +762,7 @@
       ? (dx > 0 ? 'right' : 'left')
       : (dy > 0 ? 'down' : 'up'));
   });
+  stage.addEventListener('pointercancel', () => { swipeStart = null; });
 
   // Auto-pause when the player looks away
   const autoPause = () => { if (state === 'playing') togglePause(); };
