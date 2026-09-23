@@ -1,0 +1,644 @@
+/* ============================================================================
+   Neon Snake — retro 80s arcade styling
+   Design tokens first, then scene, cabinet, HUD, stage, controls, overlays.
+   ========================================================================== */
+
+:root {
+  /* Neon palette */
+  --cyan:        #22e8ff;
+  --magenta:     #ff2fb9;
+  --purple:      #a24bff;
+  --yellow:      #ffd93d;
+  --orange:      #ff6b35;
+
+  /* Sky */
+  --sky-void:    #05010f;
+  --sky-deep:    #12042c;
+  --sky-mid:     #3a0a5e;
+  --sky-warm:    #8f1b6b;
+  --sky-hot:     #ff2d78;
+  --ground:      #0a0118;
+
+  /* Surfaces & ink */
+  --panel:       rgba(7, 1, 20, 0.86);
+  --ink:         #f4ecff;
+  --ink-dim:     rgba(244, 236, 255, 0.62);
+  --ink-faint:   rgba(244, 236, 255, 0.34);
+  --line:        rgba(34, 232, 255, 0.28);
+
+  /* Geometry */
+  --radius:      18px;
+  --radius-sm:   10px;
+  --horizon:     62%;
+  --grid-cell:   4.2vmin;
+
+  /* Type */
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono",
+               "Roboto Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 3vw, 2rem);
+  font-family: var(--font-mono);
+  color: var(--ink);
+  background: var(--sky-void);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.55em;
+  padding: 0.2em 0.42em;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: rgba(34, 232, 255, 0.07);
+  color: var(--cyan);
+  font: inherit;
+  font-size: 0.86em;
+  line-height: 1;
+  text-align: center;
+}
+
+/* ============================================================================
+   Scene — synthwave backdrop
+   ========================================================================== */
+
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      180deg,
+      var(--sky-void)  0%,
+      var(--sky-deep)  26%,
+      var(--sky-mid)   45%,
+      var(--sky-warm)  56%,
+      var(--sky-hot)   calc(var(--horizon) - 1px),
+      var(--ground)    var(--horizon),
+      #16032e          100%
+    );
+}
+
+/* Starfield above the horizon */
+.scene__stars {
+  position: absolute;
+  inset: 0 0 42% 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 76% 12%, #cfe9ff, transparent),
+    radial-gradient(1.2px 1.2px at 42% 30%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 88% 34%, #ffd9f2, transparent),
+    radial-gradient(1.2px 1.2px at 27% 8%,  #fff, transparent),
+    radial-gradient(1.4px 1.4px at 62% 24%, #d6c4ff, transparent),
+    radial-gradient(1.1px 1.1px at 6%  38%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 95% 8%,  #fff, transparent);
+  opacity: 0.85;
+  animation: twinkle 5s var(--ease) infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.9; }
+  50%      { opacity: 0.45; }
+}
+
+/* The sun: banded gradient disc sinking into the horizon */
+.scene__sun {
+  position: absolute;
+  left: 50%;
+  top: var(--horizon);
+  width: min(84vmin, 720px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -52%);
+  border-radius: 50%;
+  background: linear-gradient(
+    180deg,
+    #fff3a8 0%,
+    var(--yellow) 22%,
+    var(--orange) 46%,
+    var(--sky-hot) 74%,
+    var(--purple) 100%
+  );
+  /* Horizontal slices that widen toward the base — the classic outrun sun */
+  -webkit-mask-image: var(--sun-bands);
+          mask-image: var(--sun-bands);
+  /* The disc is centred on the horizon, so its top half is what you actually
+     see: that is where the bands live, widening downward. Below the horizon
+     (50%) it dissolves rather than laying bars over the ground plane. */
+  --sun-bands: linear-gradient(
+    180deg,
+    #000 0 20%,                   transparent 20% 21.5%,
+    #000 21.5% 27%,               transparent 27% 29%,
+    #000 29% 34%,                 transparent 34% 36.5%,
+    #000 36.5% 41%,               transparent 41% 44%,
+    #000 44% 47.5%,               transparent 47.5% 51%,
+    rgba(0, 0, 0, 0.42) 51% 55%,  transparent 55% 60%,
+    rgba(0, 0, 0, 0.16) 60% 64%,  transparent 64% 100%
+  );
+  filter: drop-shadow(0 0 40px rgba(255, 61, 139, 0.55));
+}
+
+/* Hot line where sky meets ground */
+.scene__horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--horizon);
+  height: 2px;
+  background: var(--cyan);
+  box-shadow:
+    0 0 12px var(--cyan),
+    0 0 48px rgba(34, 232, 255, 0.7),
+    0 0 120px rgba(255, 47, 185, 0.5);
+}
+
+/* Infinite perspective grid */
+.scene__grid {
+  position: absolute;
+  left: 50%;
+  top: var(--horizon);
+  width: 320vw;
+  height: 80vh;
+  transform: translateX(-50%) perspective(26vmin) rotateX(75deg);
+  transform-origin: top center;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 62%, transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 62%, transparent 100%);
+}
+
+/* The scrolling lines live on their own layer and move by transform, so the
+   animation composites on the GPU instead of repainting a viewport-sized
+   gradient every frame. The layer is one cell taller than its box so the
+   translate never exposes a gap at the top. */
+.scene__grid::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(-1 * var(--grid-cell));
+  height: calc(100% + var(--grid-cell));
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(34, 232, 255, 0.55) 0 1.5px,
+      transparent 1.5px var(--grid-cell)
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 47, 185, 0.45) 0 1.5px,
+      transparent 1.5px var(--grid-cell)
+    );
+  will-change: transform;
+  animation: grid-run 1.9s linear infinite;
+}
+
+@keyframes grid-run {
+  to { transform: translate3d(0, var(--grid-cell), 0); }
+}
+
+/* ============================================================================
+   Cabinet
+   ========================================================================== */
+
+.cabinet {
+  position: relative;
+  z-index: 10;
+  width: min(94vw, 34rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 1.8vh, 1.1rem);
+}
+
+/* Soft scrim so the sun can blaze at the edges of the frame without washing
+   out the masthead, HUD and legend that sit in front of it. */
+.cabinet::before {
+  content: "";
+  position: absolute;
+  inset: -10% -20%;
+  z-index: -1;
+  background: radial-gradient(
+    58% 52% at 50% 50%,
+    rgba(4, 0, 12, 0.93) 0%,
+    rgba(4, 0, 12, 0.82) 48%,
+    rgba(4, 0, 12, 0.4) 72%,
+    transparent 88%
+  );
+  pointer-events: none;
+}
+
+/* ── Masthead ──────────────────────────────────────────────────────────── */
+
+.masthead { text-align: center; }
+
+.masthead__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 6.5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fff 0%, var(--cyan) 42%, var(--magenta) 100%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgba(34, 232, 255, 0.55))
+          drop-shadow(0 2px 0 rgba(255, 47, 185, 0.4));
+}
+
+.masthead__tagline {
+  margin: 0.45rem 0 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  text-shadow: 0 0 10px rgba(4, 0, 12, 0.9), 0 0 24px rgba(4, 0, 12, 0.8);
+}
+
+/* ── HUD ───────────────────────────────────────────────────────────────── */
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.4rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.stat__label {
+  font-size: 0.56rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.stat__value {
+  font-size: clamp(1.05rem, 4.4vw, 1.4rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+  text-shadow: 0 0 14px rgba(34, 232, 255, 0.75);
+}
+
+.stat--accent .stat__value {
+  color: var(--yellow);
+  text-shadow: 0 0 14px rgba(255, 217, 61, 0.7);
+}
+
+/* Pulse when the value changes (toggled from JS) */
+.stat__value.is-bumped { animation: bump 0.34s var(--ease); }
+
+@keyframes bump {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+/* ── Stage ─────────────────────────────────────────────────────────────── */
+
+.stage {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  border: 1px solid rgba(34, 232, 255, 0.34);
+  /* Near-opaque: the playfield needs its own contrast, and it silhouettes
+     the cabinet cleanly against the sun behind it. */
+  background: linear-gradient(180deg, #0d0326 0%, #070218 100%);
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 47, 185, 0.16),
+    0 0 44px rgba(34, 232, 255, 0.22),
+    inset 0 0 70px rgba(120, 20, 160, 0.34),
+    0 28px 70px -22px rgba(0, 0, 0, 0.85);
+}
+
+.stage__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.stage.is-shaking { animation: shake 0.42s var(--ease); }
+
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0); }
+  20%      { transform: translate(-5px, 3px); }
+  40%      { transform: translate(5px, -3px); }
+  60%      { transform: translate(-3px, -2px); }
+  80%      { transform: translate(3px, 2px); }
+}
+
+/* ── Overlay ───────────────────────────────────────────────────────────── */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  /* Light enough that the board stays visible behind the copy */
+  background: radial-gradient(
+    120% 90% at 50% 45%,
+    rgba(9, 2, 24, 0.62) 0%,
+    rgba(9, 2, 24, 0.9) 100%
+  );
+  transition: opacity 0.28s var(--ease), visibility 0.28s;
+}
+
+.overlay[hidden] {
+  display: flex;          /* keep layout, fade instead of popping */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.overlay__eyebrow {
+  margin: 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--magenta);
+  text-shadow: 0 0 12px rgba(255, 47, 185, 0.8);
+}
+
+/* Eyebrow takes its accent from the game state */
+.overlay[data-state="ready"]  .overlay__eyebrow { color: var(--cyan);   text-shadow: 0 0 12px rgba(34, 232, 255, 0.8); }
+.overlay[data-state="paused"] .overlay__eyebrow { color: var(--yellow); text-shadow: 0 0 12px rgba(255, 217, 61, 0.8); }
+
+.overlay__title {
+  margin: 0;
+  font-size: clamp(1.4rem, 6vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 0 20px rgba(34, 232, 255, 0.6);
+}
+
+.overlay__body {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 0.76rem;
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
+.overlay__hint {
+  margin: 0.15rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+/* ── Button ────────────────────────────────────────────────────────────── */
+
+.btn {
+  margin-top: 0.3rem;
+  padding: 0.7rem 1.6rem;
+  border: 1px solid var(--cyan);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(34, 232, 255, 0.2), rgba(255, 47, 185, 0.18));
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgba(34, 232, 255, 0.3), inset 0 0 18px rgba(34, 232, 255, 0.12);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+.btn:hover,
+.btn:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 0 34px rgba(34, 232, 255, 0.55), inset 0 0 22px rgba(255, 47, 185, 0.22);
+}
+
+.btn:active { transform: translateY(0); }
+
+/* ── D-pad (touch) ─────────────────────────────────────────────────────── */
+
+.dpad {
+  display: none;
+  position: relative;
+  width: 11.5rem;
+  aspect-ratio: 1;
+  margin: 0.2rem auto 0;
+  align-self: center;
+}
+
+.dpad__btn {
+  position: absolute;
+  width: 3.6rem;
+  height: 3.6rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: background 0.14s var(--ease), box-shadow 0.14s var(--ease);
+}
+
+/* Chevron glyph */
+.dpad__btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-top: 2px solid var(--cyan);
+  border-right: 2px solid var(--cyan);
+  filter: drop-shadow(0 0 6px rgba(34, 232, 255, 0.8));
+}
+
+.dpad__btn--up    { top: 0;    left: 50%; transform: translateX(-50%); }
+.dpad__btn--down  { bottom: 0; left: 50%; transform: translateX(-50%); }
+.dpad__btn--left  { left: 0;   top: 50%;  transform: translateY(-50%); }
+.dpad__btn--right { right: 0;  top: 50%;  transform: translateY(-50%); }
+
+.dpad__btn--up::before    { transform: rotate(-45deg)  translate(-2px, 2px); }
+.dpad__btn--down::before  { transform: rotate(135deg)  translate(-2px, 2px); }
+.dpad__btn--left::before  { transform: rotate(-135deg) translate(-2px, 2px); }
+.dpad__btn--right::before { transform: rotate(45deg)   translate(-2px, 2px); }
+
+.dpad__btn:active,
+.dpad__btn.is-pressed {
+  background: rgba(34, 232, 255, 0.22);
+  box-shadow: 0 0 22px rgba(34, 232, 255, 0.5);
+}
+
+.dpad__hub {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid rgba(255, 47, 185, 0.4);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(255, 47, 185, 0.35);
+}
+
+/* ── Legend ────────────────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+}
+
+.legend__item { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+.legend__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.legend__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: color 0.16s var(--ease), border-color 0.16s var(--ease);
+}
+
+.legend__toggle:hover,
+.legend__toggle:focus-visible { color: var(--cyan); border-color: var(--cyan); }
+
+.legend__toggle-icon {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 9px var(--cyan);
+  transition: background 0.16s var(--ease), box-shadow 0.16s var(--ease);
+}
+
+.legend__toggle[aria-pressed="false"] .legend__toggle-icon {
+  background: var(--ink-faint);
+  box-shadow: none;
+}
+
+/* ============================================================================
+   CRT treatment
+   ========================================================================== */
+
+.crt {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.26) 0 1px,
+    transparent 1px 3px
+  );
+  opacity: 0.55;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  pointer-events: none;
+  background: radial-gradient(
+    115% 85% at 50% 45%,
+    transparent 42%,
+    rgba(2, 0, 8, 0.55) 78%,
+    rgba(2, 0, 8, 0.88) 100%
+  );
+}
+
+/* ============================================================================
+   Responsive
+   ========================================================================== */
+
+@media (hover: none) and (pointer: coarse) {
+  .dpad { display: block; }
+  /* Keyboard hints are meaningless without a keyboard */
+  .overlay__hint,
+  .legend__item { display: none; }
+  .legend__dot { display: none; }
+}
+
+@media (max-width: 30rem) {
+  :root { --radius: 14px; }
+
+  /* The cabinet spans nearly the full width here, so only fragments of the
+     sun's bands would show — they read as stray bars. Sky + grid carry it. */
+  .scene__sun { display: none; }
+
+  .cabinet { gap: 0.55rem; }
+  .masthead__tagline { letter-spacing: 0.3em; }
+  .stat { padding: 0.4rem 0.3rem 0.45rem; }
+  .dpad { width: 10rem; }
+  .dpad__btn { width: 3.2rem; height: 3.2rem; }
+}
+
+/* Short viewports: drop the tagline before anything else clips */
+@media (max-height: 44rem) {
+  .masthead__tagline { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene__grid::after,
+  .scene__stars { animation: none; }
+
+  .stage.is-shaking,
+  .stat__value.is-bumped { animation: none; }
+
+  .btn { transition: none; }
+}
