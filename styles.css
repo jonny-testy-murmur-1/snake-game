@@ -668,16 +668,27 @@ kbd {
 /* Landscape phones. A square board stacked above a d-pad simply cannot fit in
    ~360px of height, and scrolling between the two is no way to play. So the
    cabinet turns on its side: board on the left sized off the viewport height,
-   title, score and controls in a column beside it. */
-@media (max-height: 32rem) and (min-width: 36rem) and (orientation: landscape) {
+   title, score and controls in a column beside it.
+
+   Deliberately no width floor. The upright layout sizes the board off the
+   *width*, so the shorter and narrower the phone the worse the mismatch — a
+   480x320 handset would render a 451px board in 320px of height and push the
+   d-pad clean off the screen. The board track is `minmax(0, 1fr)`, so it
+   simply gives ground to the controls as the viewport narrows rather than
+   overflowing. */
+@media (max-height: 32rem) and (orientation: landscape) {
   .cabinet {
     width: auto;
     max-width: 94vw;
     display: grid;
     /* The board track shrinks before the controls do: on a near-square short
        viewport an intrinsically sized board plus the side column would exceed
-       94vw and push the d-pad off screen. */
-    grid-template-columns: minmax(0, 1fr) minmax(11rem, 15rem);
+       94vw and push the d-pad off screen.
+
+       The side column is also capped as a share of the viewport, so a narrow
+       handset does not hand 15rem to controls that need 11: the board is the
+       thing worth the pixels, and it takes every one the column gives back. */
+    grid-template-columns: minmax(0, 1fr) minmax(11rem, min(15rem, 38vw));
     grid-template-rows: auto auto 1fr auto;
     grid-template-areas:
       "stage masthead"
